@@ -1,5 +1,5 @@
 /*
-# testyqxs
+# testyqxs v1.1.0
 
 [rewrite_local]
 ^https:\/\/h5\.youzan\.com\/wscump\/checkin\/.* url script-request-header https://raw.githubusercontent.com/GFeelingh/testyqxs/main/testyqxs.js
@@ -17,7 +17,11 @@ hostname = h5.youzan.com
 */
 
 const NAME = "testyqxs";
+const VERSION = "1.1.0";
+const DISPLAY_NAME = `${NAME} v${VERSION}`;
 const STORE_KEY = "testyqxs_cfg";
+const CAPTURE_NOTICE_KEY = `${STORE_KEY}_capture_notice`;
+const CAPTURE_NOTICE_COOLDOWN_SECONDS = 20;
 const RANDOM_DELAY_SECONDS = [60, 300];
 
 const DEFAULTS = {
@@ -54,6 +58,7 @@ function capture() {
     return;
   }
 
+  const existed = !!old.accessToken;
   const changed =
     cfg.accessToken !== old.accessToken ||
     cfg.checkInId !== old.checkInId ||
@@ -61,14 +66,13 @@ function capture() {
 
   $prefs.setValueForKey(JSON.stringify(cfg), STORE_KEY);
 
-  if (changed) {
-    notify("登录态已更新", `checkInId: ${cfg.checkInId}`, "现在可以运行定时签到任务。");
-  }
+  notifyCaptureState(existed, changed, cfg);
 
   $done({});
 }
 
 async function run() {
+  log(`Version: ${VERSION}`);
   const cfg = loadConfig();
   if (!cfg.accessToken) {
     notify("未找到登录态", "请先打开一次签到页", "确认 rewrite 已启用，并让脚本捕获 h5.youzan.com/wscump/checkin 请求。");
@@ -77,9 +81,11 @@ async function run() {
   }
 
   const delaySeconds = randomInt(RANDOM_DELAY_SECONDS[0], RANDOM_DELAY_SECONDS[1]);
-  await sleep(delaySeconds * 1000);
+  log(`随机延迟已设定：${delaySeconds} 秒。`);
+  await countdown(delaySeconds);
 
   const checkInId = cfg.checkInId || DEFAULTS.checkInId;
+  log(`倒计时结束，开始检查签到状态。checkInId=${checkInId}`);
   const common = buildQuery({
     app_id: cfg.appId || DEFAULTS.appId,
     kdt_id: cfg.kdtId || DEFAULTS.kdtId,
@@ -92,6 +98,7 @@ async function run() {
   try {
     const status = await fetchJson(statusUrl, cfg);
     if (status.ok && status.data && status.data.isCheckin === true) {
+      log("检查结果：今日已签到。");
       notify("今日已签到", `连续 ${status.data.continuesDay || "-"} 天`, rewardText(status.data.dailyRewards));
       done();
       return;
@@ -99,6 +106,7 @@ async function run() {
 
     const sign = await fetchJson(signUrl, cfg);
     if (!sign.ok || !sign.data || sign.data.success !== true) {
+      log(`签到失败：${sign.msg || `HTTP ${sign.statusCode || "-"}`}`);
       notify("签到失败", sign.msg || `HTTP ${sign.statusCode || "-"}`, "可能是登录态过期，请手动打开签到页刷新。");
       done();
       return;
@@ -107,8 +115,10 @@ async function run() {
     const awards = Array.isArray(sign.data.list)
       ? sign.data.list.map((item) => item.infos && item.infos.title).filter(Boolean).join("，")
       : "";
+    log(`签到成功：${awards || sign.data.desc || "已完成"}，连续 ${sign.data.times || "-"} 天。`);
     notify("签到成功", awards || sign.data.desc || "已完成", `连续 ${sign.data.times || "-"} 天`);
   } catch (err) {
+    log(`签到异常：${String(err && err.message ? err.message : err)}`);
     notify("签到异常", String(err && err.message ? err.message : err), "请手动打开签到页刷新登录态后再试。");
   }
 
@@ -138,8 +148,12 @@ function fetchJson(url, cfg) {
 }
 
 function loadConfig() {
+  return loadJson(STORE_KEY);
+}
+
+function loadJson(key) {
   try {
-    return JSON.parse($prefs.valueForKey(STORE_KEY) || "{}");
+    return JSON.parse($prefs.valueForKey(key) || "{}");
   } catch (err) {
     return {};
   }
@@ -186,8 +200,46 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function countdown(seconds) {
+  for (let remaining = seconds; remaining > 0; remaining--) {
+    log(`倒计时：${remaining} 秒后执行签到。`);
+    await sleep(1000);
+  }
+}
+
+function notifyCaptureState(existed, changed, cfg) {
+  if (shouldSkipCaptureNotice()) return;
+
+  if (!existed) {
+    notify("登录态已保存", `checkInId: ${cfg.checkInId}`, "现在可以运行定时签到任务。");
+    return;
+  }
+
+  if (changed) {
+    notify("登录态已更新", `checkInId: ${cfg.checkInId}`, "登录信息已刷新。");
+    return;
+  }
+
+  notify("登录态已获取过", `checkInId: ${cfg.checkInId}`, "当前登录信息没有变化。");
+}
+
+function shouldSkipCaptureNotice() {
+  const now = Date.now();
+  const last = loadJson(CAPTURE_NOTICE_KEY);
+  const lastTime = Number(last.time || 0);
+  if (lastTime && now - lastTime < CAPTURE_NOTICE_COOLDOWN_SECONDS * 1000) {
+    return true;
+  }
+  $prefs.setValueForKey(JSON.stringify({ time: now }), CAPTURE_NOTICE_KEY);
+  return false;
+}
+
 function notify(subtitle, message, detail) {
-  $notify(NAME, subtitle || "", [message, detail].filter(Boolean).join("\n"));
+  $notify(DISPLAY_NAME, subtitle || "", [message, detail].filter(Boolean).join("\n"));
+}
+
+function log(message) {
+  console.log(`[${DISPLAY_NAME}] ${message}`);
 }
 
 function done() {
