@@ -1,5 +1,14 @@
 /*
-testyqxs
+# testyqxs
+
+[rewrite_local]
+^https:\/\/h5\.youzan\.com\/wscump\/checkin\/.* url script-request-header https://raw.githubusercontent.com/GFeelingh/testyqxs/main/testyqxs.js
+
+[task_local]
+55 7 * * * https://raw.githubusercontent.com/GFeelingh/testyqxs/main/testyqxs.js, tag=testyqxs, enabled=true
+
+[mitm]
+hostname = h5.youzan.com
 
 用法：
 1. 配置 rewrite 捕获 h5.youzan.com/wscump/checkin/* 请求。

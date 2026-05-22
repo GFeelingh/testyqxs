@@ -20,6 +20,18 @@ checkinId = 6287727
 
 ## QX 配置
 
+### 方式一：资源解析器导入
+
+在 QX 的资源页面添加下面这个链接，并开启资源解析器：
+
+```text
+https://raw.githubusercontent.com/GFeelingh/testyqxs/main/testyqxs.js
+```
+
+脚本顶部已经内置 `[rewrite_local]`、`[task_local]` 和 `[mitm]` 规则，资源解析器可以直接识别。
+
+### 方式二：手动配置
+
 把脚本放到 QX 可访问的位置后，添加：
 
 ```ini
@@ -39,10 +51,10 @@ GitHub 远程示例：
 
 ```ini
 [rewrite_local]
-^https:\/\/h5\.youzan\.com\/wscump\/checkin\/.* url script-request-header https://raw.githubusercontent.com/你的用户名/testyqxs/main/testyqxs.js
+^https:\/\/h5\.youzan\.com\/wscump\/checkin\/.* url script-request-header https://raw.githubusercontent.com/GFeelingh/testyqxs/main/testyqxs.js
 
 [task_local]
-55 7 * * * https://raw.githubusercontent.com/你的用户名/testyqxs/main/testyqxs.js, tag=testyqxs, enabled=true
+55 7 * * * https://raw.githubusercontent.com/GFeelingh/testyqxs/main/testyqxs.js, tag=testyqxs, enabled=true
 ```
 
 ## 使用步骤
