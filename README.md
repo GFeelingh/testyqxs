@@ -2,6 +2,64 @@
 
 Quantumult X task/rewrite script.
 
+## IT之家签到
+
+新增脚本：`testqitx.js`
+
+### 已确认接口
+
+Stream 抓包和页面脚本确认 IT之家签到页使用：
+
+```text
+GET https://napi.ithome.com/api/usersign/getsigninfo
+GET https://napi.ithome.com/api/usersign/sign
+```
+
+关键参数：
+
+```text
+userHash = Bearer ...
+```
+
+页面逻辑是先查询 `getsigninfo`，如果返回 `issign=false`，再请求 `sign` 完成签到。
+
+### QX 配置
+
+#### 方式一：资源解析器导入
+
+在 QX 的资源页面添加下面这个链接，并开启资源解析器：
+
+```text
+https://raw.githubusercontent.com/GFeelingh/testyqxs/main/testqitx.js
+```
+
+脚本顶部已经内置 `[rewrite_local]`、`[task_local]` 和 `[mitm]` 规则，资源解析器可以直接识别。
+
+#### 方式二：手动配置
+
+```ini
+[rewrite_local]
+^https:\/\/napi\.ithome\.com\/api\/usersign\/(?:getsigninfo|sign)(?:\?|$) url script-request-header https://raw.githubusercontent.com/GFeelingh/testyqxs/main/testqitx.js
+
+[task_local]
+20 8 * * * https://raw.githubusercontent.com/GFeelingh/testyqxs/main/testqitx.js, tag=testqitx, enabled=true
+
+[mitm]
+hostname = napi.ithome.com
+```
+
+### 使用步骤
+
+1. 开启 QX、Rewrite、MitM。
+2. 在 IT之家 App 内打开一次签到页。
+3. 看到“登录态已保存 / 已更新 / 已获取过”通知后，就可以运行定时任务。
+4. 今天已签到时，脚本会通知当前连续签到、累计签到和金币数。
+5. 明天未签到状态下再运行一次，用来验证 `sign` 接口的成功响应。
+
+定时任务会在每天 08:20 触发，脚本内部再随机等待 1-5 分钟后执行，实际时间约为 08:21-08:25。等待期间 QX 日志会每秒显示剩余倒计时。
+
+不要上传包含完整 `userHash` / `Bearer` 的 HAR、截图或配置。
+
 当前版本：`1.1.0`
 
 ## 1.1.0 更新
