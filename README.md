@@ -2,7 +2,7 @@
 
 Quantumult X task/rewrite script.
 
-## IT之家签到
+## IT签到
 
 新增脚本：`testqitx.js`
 
@@ -51,7 +51,7 @@ hostname = napi.ithome.com
 ### 使用步骤
 
 1. 开启 QX、Rewrite、MitM。
-2. 在 IT之家 App 内打开一次签到页。
+2. 在 IT App 内打开一次签到页。
 3. 看到“登录态已保存 / 已更新 / 已获取过”通知后，就可以运行定时任务。
 4. 今天已签到时，脚本会通知当前连续签到、累计签到和金币数。
 5. 明天未签到状态下再运行一次，用来验证 `sign` 接口的成功响应。
